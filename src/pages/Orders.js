@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
 import API from '../services/api';
 
@@ -21,15 +21,31 @@ function Orders() {
   const [filter, setFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [error, setError] = useState('');
+  const prevPendingCountRef = useRef(null);
 
   useEffect(() => {
     fetchOrders();
+    const interval = setInterval(fetchOrders, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchOrders = async () => {
     try {
       const response = await API.get('/orders');
-      setOrders(response.data);
+      const newOrders = response.data;
+      const pendingCount = newOrders.filter(o => o.status === 'pending').length;
+      if (
+        Notification.permission === 'granted' &&
+        prevPendingCountRef.current !== null &&
+        pendingCount > prevPendingCountRef.current
+      ) {
+        const diff = pendingCount - prevPendingCountRef.current;
+        new Notification('New Order Received 🍔', {
+          body: `${diff} new pending order${diff > 1 ? 's' : ''} waiting for action`,
+        });
+      }
+      prevPendingCountRef.current = pendingCount;
+      setOrders(newOrders);
     } catch (err) {
       setError('Failed to load orders');
     }

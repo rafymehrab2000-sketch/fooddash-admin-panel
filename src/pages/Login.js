@@ -24,6 +24,9 @@ function Login() {
 
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
+      if ('Notification' in window) {
+        await Notification.requestPermission();
+      }
       window.location.href = '/dashboard';
     } catch (err) {
       setError('Invalid email or password');
