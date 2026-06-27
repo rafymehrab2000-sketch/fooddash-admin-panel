@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../components/Sidebar';
 import API from '../services/api';
+import { useSocket } from '../context/SocketContext';
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -16,46 +17,53 @@ const getStatusColor = (status) => {
 };
 
 function Orders() {
+  const { socket, connected } = useSocket();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [error, setError] = useState('');
-  const prevPendingCountRef = useRef(null);
 
-  useEffect(() => {
-    fetchOrders();
-    const interval = setInterval(fetchOrders, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const response = await API.get('/orders');
-      const newOrders = response.data;
-      const pendingCount = newOrders.filter(o => o.status === 'pending').length;
-      if (
-        Notification.permission === 'granted' &&
-        prevPendingCountRef.current !== null &&
-        pendingCount > prevPendingCountRef.current
-      ) {
-        const diff = pendingCount - prevPendingCountRef.current;
-        new Notification('New Order Received 🍔', {
-          body: `${diff} new pending order${diff > 1 ? 's' : ''} waiting for action`,
-        });
-      }
-      prevPendingCountRef.current = pendingCount;
-      setOrders(newOrders);
+      setOrders(response.data);
     } catch (err) {
       setError('Failed to load orders');
     }
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewOrder = () => fetchOrders();
+
+    const handleStatusChanged = (data) => {
+      const { orderId, status } = data ?? {};
+      if (!orderId || !status) return;
+      setOrders(prev =>
+        prev.map(o => o.id === orderId ? { ...o, status } : o)
+      );
+      setSelectedOrder(prev =>
+        prev?.id === orderId ? { ...prev, status } : prev
+      );
+    };
+
+    socket.on('new_order', handleNewOrder);
+    socket.on('order_status_changed', handleStatusChanged);
+
+    return () => {
+      socket.off('new_order', handleNewOrder);
+      socket.off('order_status_changed', handleStatusChanged);
+    };
+  }, [socket, fetchOrders]);
 
   const updateStatus = async (id, status) => {
     try {
       await API.put(`/orders/${id}/status`, { status });
-      fetchOrders();
       setSelectedOrder(null);
     } catch (err) {
       setError('Failed to update status');
@@ -70,10 +78,18 @@ function Orders() {
     <div style={styles.container}>
       <Sidebar />
       <div style={styles.main}>
-        <h1 style={styles.title}>🧾 Orders</h1>
-        <p style={styles.subtitle}>
-          {orders.length} total order{orders.length !== 1 ? 's' : ''}
-        </p>
+        <div style={styles.titleRow}>
+          <div>
+            <h1 style={styles.title}>🧾 Orders</h1>
+            <p style={styles.subtitle}>
+              {orders.length} total order{orders.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <div style={{ ...styles.liveChip, backgroundColor: connected ? '#e8f5e9' : '#fff3e0', color: connected ? '#2e7d32' : '#e65100' }}>
+            <span style={{ ...styles.liveDot, backgroundColor: connected ? '#4CAF50' : '#ff9800' }} />
+            {connected ? 'Live' : 'Connecting…'}
+          </div>
+        </div>
 
         {error && <div style={styles.error}>{error}</div>}
 
@@ -232,8 +248,15 @@ function Orders() {
 const styles = {
   container: { display: 'flex', minHeight: '100vh', backgroundColor: '#f0f2f5' },
   main: { marginLeft: '240px', padding: '40px', flex: 1 },
+  titleRow: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 0 },
   title: { fontSize: '28px', fontWeight: '700', color: '#1a1a1a', margin: 0 },
   subtitle: { color: '#888', marginTop: '4px', marginBottom: '20px' },
+  liveChip: {
+    display: 'flex', alignItems: 'center', gap: 6,
+    padding: '6px 14px', borderRadius: 20,
+    fontSize: 13, fontWeight: 600, marginTop: 4,
+  },
+  liveDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
   error: {
     backgroundColor: '#ffe0e0', color: '#cc0000', padding: '12px',
     borderRadius: '8px', marginBottom: '20px', fontSize: '14px',

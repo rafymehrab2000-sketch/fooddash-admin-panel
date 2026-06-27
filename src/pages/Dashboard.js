@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../components/Sidebar';
 import API from '../services/api';
+import { useSocket } from '../context/SocketContext';
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -15,16 +16,13 @@ const getStatusColor = (status) => {
 };
 
 function Dashboard() {
+  const { socket } = useSocket();
   const [orders, setOrders] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [ordersRes, restaurantsRes, statsRes] = await Promise.all([
         API.get('/orders'),
@@ -38,7 +36,35 @@ function Dashboard() {
       console.error('Failed to load dashboard data:', err);
     }
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewOrder = () => fetchData();
+
+    const handleStatusChanged = (data) => {
+      const { orderId, status } = data ?? {};
+      if (!orderId || !status) return;
+      setOrders(prev =>
+        prev.map(o => o.id === orderId ? { ...o, status } : o)
+      );
+      if (status === 'delivered') {
+        setStats(prev => prev ? { ...prev, totalRevenue: (prev.totalRevenue ?? 0) } : prev);
+        fetchData();
+      }
+    };
+
+    socket.on('new_order', handleNewOrder);
+    socket.on('order_status_changed', handleStatusChanged);
+
+    return () => {
+      socket.off('new_order', handleNewOrder);
+      socket.off('order_status_changed', handleStatusChanged);
+    };
+  }, [socket, fetchData]);
 
   const statsCards = [
     { label: 'Total Orders', value: stats?.totalOrders || 0, icon: '🧾', color: '#ff6b35' },
@@ -103,6 +129,7 @@ function Dashboard() {
                           <span style={{
                             ...styles.badge,
                             backgroundColor: getStatusColor(order.status),
+                            transition: 'background-color 0.4s ease',
                           }}>
                             {order.status?.replace('_', ' ')}
                           </span>
