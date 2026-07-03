@@ -15,22 +15,19 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString();
 }
 
-// Backend returns a flat array of messages; group them into per-customer
-// threads here since there's no dedicated "threads" endpoint.
-function groupByCustomer(flatMessages) {
+function groupByCustomer(messages) {
   const byCustomer = new Map();
-  for (const msg of flatMessages) {
+
+  for (const msg of messages) {
     const cid = msg.customerId;
-    // Rows without a customerId can't be attributed to a thread — including
-    // them would lump unrelated customers together under "Customer #undefined".
-    if (cid === undefined || cid === null) continue;
     if (!byCustomer.has(cid)) {
       byCustomer.set(cid, []);
     }
     byCustomer.get(cid).push(msg);
   }
 
-  return Array.from(byCustomer.entries()).map(([customerId, msgs]) => {
+  const threads = [];
+  for (const [customerId, msgs] of byCustomer) {
     const sorted = [...msgs].sort(
       (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
     );
@@ -38,16 +35,20 @@ function groupByCustomer(flatMessages) {
     const unreadCount = sorted.filter(
       (m) => m.senderRole === 'customer' && !m.isRead
     ).length;
-    return {
+
+    threads.push({
       customerId,
-      // Backend only gives us the id, not a display name.
       customerName: `Customer #${customerId}`,
       messages: sorted,
-      lastMessage: last?.content || '',
-      lastMessageAt: last?.createdAt,
+      lastMessage: last.content,
+      lastMessageAt: last.createdAt,
       unreadCount,
-    };
-  });
+    });
+  }
+
+  return threads.sort(
+    (a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt)
+  );
 }
 
 function Support() {
@@ -55,19 +56,13 @@ function Support() {
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const messagesEndRef = useRef(null);
 
-  const fetchThreads = useCallback(async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       const response = await API.get('/messages');
-      // Backend is documented to return a bare array, but tolerate an
-      // { data: [...] } envelope too (matches the shape POST /messages uses).
-      const raw = Array.isArray(response.data)
-        ? response.data
-        : response.data?.data || [];
-      setThreads(groupByCustomer(raw));
+      setThreads(groupByCustomer(response.data));
       setError('');
     } catch (err) {
       setError('Failed to load messages');
@@ -76,10 +71,10 @@ function Support() {
   }, []);
 
   useEffect(() => {
-    fetchThreads();
-    const interval = setInterval(fetchThreads, REFRESH_INTERVAL);
+    fetchMessages();
+    const interval = setInterval(fetchMessages, REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchThreads]);
+  }, [fetchMessages]);
 
   const selectedThread = threads.find(t => t.customerId === selectedCustomerId) || null;
 
@@ -87,65 +82,37 @@ function Support() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [selectedThread?.messages?.length]);
 
-  const markThreadRead = useCallback(async (thread) => {
-    if (!thread) return;
-    const unread = (thread.messages || []).filter(m => m.senderRole === 'customer' && !m.isRead);
-    if (unread.length === 0) return;
-    try {
-      await Promise.all(unread.map(m => API.put(`/messages/${m.id}/read`)));
-      setThreads(prev => prev.map(t =>
-        t.customerId === thread.customerId
-          ? {
-              ...t,
-              unreadCount: 0,
-              messages: t.messages.map(m => ({ ...m, isRead: true })),
-            }
-          : t
-      ));
-    } catch (err) {
-      // non-fatal: unread badge will retry on next refresh
+  const markAsRead = async (thread) => {
+    const unread = thread.messages.filter(m => m.senderRole === 'customer' && !m.isRead);
+    for (const msg of unread) {
+      try {
+        await API.put(`/messages/${msg.id}/read`);
+      } catch (err) {
+        // ignore — will retry on next refresh
+      }
     }
-  }, []);
+  };
 
   const handleSelectCustomer = (customerId) => {
     setSelectedCustomerId(customerId);
     const thread = threads.find(t => t.customerId === customerId);
-    markThreadRead(thread);
+    if (thread) markAsRead(thread);
   };
 
   const handleSend = async () => {
     const content = replyText.trim();
-    if (!content || !selectedCustomerId || sending) return;
+    if (!content || !selectedCustomerId) return;
 
-    setSending(true);
     try {
-      const response = await API.post('/messages', {
-        customerId: selectedCustomerId,
+      await API.post('/messages', {
         content,
+        customerId: selectedCustomerId,
       });
-      const newMessage = response.data?.data || {
-        id: `temp-${Date.now()}`,
-        senderRole: 'admin',
-        customerId: selectedCustomerId,
-        content,
-        createdAt: new Date().toISOString(),
-        isRead: true,
-      };
-      setThreads(prev => prev.map(t =>
-        t.customerId === selectedCustomerId
-          ? {
-              ...t,
-              lastMessage: newMessage.content,
-              lastMessageAt: newMessage.createdAt,
-              messages: [...(t.messages || []), newMessage],
-            }
-          : t
-      ));
       setReplyText('');
+      fetchMessages();
     } catch (err) {
       setError('Failed to send reply');
     }
-    setSending(false);
   };
 
   const handleKeyDown = (e) => {
@@ -154,10 +121,6 @@ function Support() {
       handleSend();
     }
   };
-
-  const sortedThreads = [...threads].sort((a, b) =>
-    new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)
-  );
 
   return (
     <div style={styles.container}>
@@ -179,10 +142,10 @@ function Support() {
           <div style={styles.customerList}>
             {loading ? (
               <div style={styles.loading}>Loading...</div>
-            ) : sortedThreads.length === 0 ? (
+            ) : threads.length === 0 ? (
               <div style={styles.empty}>No conversations yet.</div>
             ) : (
-              sortedThreads.map((thread) => (
+              threads.map((thread) => (
                 <div
                   key={thread.customerId}
                   style={
@@ -215,7 +178,7 @@ function Support() {
                   <strong>{selectedThread.customerName}</strong>
                 </div>
                 <div style={styles.messageList}>
-                  {(selectedThread.messages || []).map((msg) => (
+                  {selectedThread.messages.map((msg) => (
                     <div
                       key={msg.id}
                       style={{
@@ -256,7 +219,7 @@ function Support() {
                   <button
                     style={styles.sendButton}
                     onClick={handleSend}
-                    disabled={!replyText.trim() || sending}
+                    disabled={!replyText.trim()}
                   >
                     Send
                   </button>
