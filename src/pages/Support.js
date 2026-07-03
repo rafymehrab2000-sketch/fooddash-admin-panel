@@ -62,6 +62,9 @@ function Support() {
   const fetchMessages = useCallback(async () => {
     try {
       const response = await API.get('/messages');
+      console.log('Raw messages from API:', JSON.stringify(response.data));
+      console.log('First message:', JSON.stringify(response.data[0]));
+      console.log('customerId of first message:', response.data[0]?.customerId);
       setThreads(groupByCustomer(response.data));
       setError('');
     } catch (err) {
