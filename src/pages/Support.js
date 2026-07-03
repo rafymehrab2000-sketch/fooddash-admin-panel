@@ -21,6 +21,9 @@ function groupByCustomer(flatMessages) {
   const byCustomer = new Map();
   for (const msg of flatMessages) {
     const cid = msg.customerId;
+    // Rows without a customerId can't be attributed to a thread — including
+    // them would lump unrelated customers together under "Customer #undefined".
+    if (cid === undefined || cid === null) continue;
     if (!byCustomer.has(cid)) {
       byCustomer.set(cid, []);
     }
@@ -59,7 +62,12 @@ function Support() {
   const fetchThreads = useCallback(async () => {
     try {
       const response = await API.get('/messages');
-      setThreads(groupByCustomer(response.data || []));
+      // Backend is documented to return a bare array, but tolerate an
+      // { data: [...] } envelope too (matches the shape POST /messages uses).
+      const raw = Array.isArray(response.data)
+        ? response.data
+        : response.data?.data || [];
+      setThreads(groupByCustomer(raw));
       setError('');
     } catch (err) {
       setError('Failed to load messages');
