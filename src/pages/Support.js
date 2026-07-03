@@ -15,6 +15,38 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString();
 }
 
+// Backend returns a flat array of messages; group them into per-customer
+// threads here since there's no dedicated "threads" endpoint.
+function groupByCustomer(flatMessages) {
+  const byCustomer = new Map();
+  for (const msg of flatMessages) {
+    const cid = msg.customerId;
+    if (!byCustomer.has(cid)) {
+      byCustomer.set(cid, []);
+    }
+    byCustomer.get(cid).push(msg);
+  }
+
+  return Array.from(byCustomer.entries()).map(([customerId, msgs]) => {
+    const sorted = [...msgs].sort(
+      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+    );
+    const last = sorted[sorted.length - 1];
+    const unreadCount = sorted.filter(
+      (m) => m.senderRole === 'customer' && !m.isRead
+    ).length;
+    return {
+      customerId,
+      // Backend only gives us the id, not a display name.
+      customerName: `Customer #${customerId}`,
+      messages: sorted,
+      lastMessage: last?.content || '',
+      lastMessageAt: last?.createdAt,
+      unreadCount,
+    };
+  });
+}
+
 function Support() {
   const [threads, setThreads] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
@@ -27,7 +59,7 @@ function Support() {
   const fetchThreads = useCallback(async () => {
     try {
       const response = await API.get('/messages');
-      setThreads(response.data || []);
+      setThreads(groupByCustomer(response.data || []));
       setError('');
     } catch (err) {
       setError('Failed to load messages');
@@ -49,7 +81,7 @@ function Support() {
 
   const markThreadRead = useCallback(async (thread) => {
     if (!thread) return;
-    const unread = (thread.messages || []).filter(m => m.senderType === 'customer' && !m.read);
+    const unread = (thread.messages || []).filter(m => m.senderRole === 'customer' && !m.isRead);
     if (unread.length === 0) return;
     try {
       await Promise.all(unread.map(m => API.put(`/messages/${m.id}/read`)));
@@ -58,7 +90,7 @@ function Support() {
           ? {
               ...t,
               unreadCount: 0,
-              messages: t.messages.map(m => ({ ...m, read: true })),
+              messages: t.messages.map(m => ({ ...m, isRead: true })),
             }
           : t
       ));
@@ -74,27 +106,28 @@ function Support() {
   };
 
   const handleSend = async () => {
-    const text = replyText.trim();
-    if (!text || !selectedCustomerId || sending) return;
+    const content = replyText.trim();
+    if (!content || !selectedCustomerId || sending) return;
 
     setSending(true);
     try {
       const response = await API.post('/messages', {
         customerId: selectedCustomerId,
-        text,
+        content,
       });
-      const newMessage = response.data || {
+      const newMessage = response.data?.data || {
         id: `temp-${Date.now()}`,
-        senderType: 'admin',
-        text,
+        senderRole: 'admin',
+        customerId: selectedCustomerId,
+        content,
         createdAt: new Date().toISOString(),
-        read: true,
+        isRead: true,
       };
       setThreads(prev => prev.map(t =>
         t.customerId === selectedCustomerId
           ? {
               ...t,
-              lastMessage: text,
+              lastMessage: newMessage.content,
               lastMessageAt: newMessage.createdAt,
               messages: [...(t.messages || []), newMessage],
             }
@@ -179,21 +212,21 @@ function Support() {
                       key={msg.id}
                       style={{
                         ...styles.messageRow,
-                        justifyContent: msg.senderType === 'admin' ? 'flex-end' : 'flex-start',
+                        justifyContent: msg.senderRole === 'admin' ? 'flex-end' : 'flex-start',
                       }}
                     >
                       <div
                         style={
-                          msg.senderType === 'admin'
+                          msg.senderRole === 'admin'
                             ? styles.bubbleAdmin
                             : styles.bubbleCustomer
                         }
                       >
-                        <div>{msg.text}</div>
+                        <div>{msg.content}</div>
                         <div
                           style={{
                             ...styles.bubbleTime,
-                            color: msg.senderType === 'admin' ? 'rgba(255,255,255,0.8)' : '#888',
+                            color: msg.senderRole === 'admin' ? 'rgba(255,255,255,0.8)' : '#888',
                           }}
                         >
                           {timeAgo(msg.createdAt)}
