@@ -6,6 +6,7 @@ import Orders from './pages/Orders';
 import Restaurants from './pages/Restaurants';
 import Users from './pages/Users';
 import Riders from './pages/Riders';
+import Support from './pages/Support';
 import { SocketProvider, useSocket } from './context/SocketContext';
 import { ToastProvider, useToast } from './components/Toast';
 
@@ -66,6 +67,7 @@ function App() {
             <Route path="/restaurants" element={<ProtectedRoute><Restaurants /></ProtectedRoute>} />
             <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
             <Route path="/riders" element={<ProtectedRoute><Riders /></ProtectedRoute>} />
+            <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
       </ToastProvider>

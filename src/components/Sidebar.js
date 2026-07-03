@@ -7,6 +7,7 @@ const menuItems = [
   { label: 'Restaurants', path: '/restaurants', icon: '🍽️' },
   { label: 'Users', path: '/users', icon: '👥' },
   { label: 'Riders', path: '/riders', icon: '🛵' },
+  { label: 'Support', path: '/support', icon: '💬' },
 ];
 
 function Sidebar() {
