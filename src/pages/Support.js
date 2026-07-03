@@ -15,42 +15,6 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString();
 }
 
-function groupByCustomer(messages) {
-  const byCustomer = new Map();
-
-  for (const msg of messages) {
-    const cid = msg.customerId;
-    if (!byCustomer.has(cid)) {
-      byCustomer.set(cid, []);
-    }
-    byCustomer.get(cid).push(msg);
-  }
-
-  const threads = [];
-  for (const [customerId, msgs] of byCustomer) {
-    const sorted = [...msgs].sort(
-      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-    );
-    const last = sorted[sorted.length - 1];
-    const unreadCount = sorted.filter(
-      (m) => m.senderRole === 'customer' && !m.isRead
-    ).length;
-
-    threads.push({
-      customerId,
-      customerName: `Customer #${customerId}`,
-      messages: sorted,
-      lastMessage: last.content,
-      lastMessageAt: last.createdAt,
-      unreadCount,
-    });
-  }
-
-  return threads.sort(
-    (a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt)
-  );
-}
-
 function Support() {
   const [threads, setThreads] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
@@ -62,10 +26,7 @@ function Support() {
   const fetchMessages = useCallback(async () => {
     try {
       const response = await API.get('/messages');
-      console.log('Raw messages from API:', JSON.stringify(response.data));
-      console.log('First message:', JSON.stringify(response.data[0]));
-      console.log('customerId of first message:', response.data[0]?.customerId);
-      setThreads(groupByCustomer(response.data));
+      setThreads(response.data);
       setError('');
     } catch (err) {
       setError('Failed to load messages');
@@ -79,7 +40,7 @@ function Support() {
     return () => clearInterval(interval);
   }, [fetchMessages]);
 
-  const selectedThread = threads.find(t => t.customerId === selectedCustomerId) || null;
+  const selectedThread = threads.find(t => t.customer.id === selectedCustomerId) || null;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -98,7 +59,7 @@ function Support() {
 
   const handleSelectCustomer = (customerId) => {
     setSelectedCustomerId(customerId);
-    const thread = threads.find(t => t.customerId === customerId);
+    const thread = threads.find(t => t.customer.id === customerId);
     if (thread) markAsRead(thread);
   };
 
@@ -148,26 +109,29 @@ function Support() {
             ) : threads.length === 0 ? (
               <div style={styles.empty}>No conversations yet.</div>
             ) : (
-              threads.map((thread) => (
-                <div
-                  key={thread.customerId}
-                  style={
-                    selectedCustomerId === thread.customerId
-                      ? styles.customerItemActive
-                      : styles.customerItem
-                  }
-                  onClick={() => handleSelectCustomer(thread.customerId)}
-                >
-                  <div style={styles.customerRow}>
-                    <span style={styles.customerName}>{thread.customerName}</span>
-                    {thread.unreadCount > 0 && (
-                      <span style={styles.unreadBadge}>{thread.unreadCount}</span>
-                    )}
+              threads.map((thread) => {
+                const lastMessage = thread.messages[thread.messages.length - 1];
+                return (
+                  <div
+                    key={thread.customer.id}
+                    style={
+                      selectedCustomerId === thread.customer.id
+                        ? styles.customerItemActive
+                        : styles.customerItem
+                    }
+                    onClick={() => handleSelectCustomer(thread.customer.id)}
+                  >
+                    <div style={styles.customerRow}>
+                      <span style={styles.customerName}>{thread.customer.name}</span>
+                      {thread.unreadCount > 0 && (
+                        <span style={styles.unreadBadge}>{thread.unreadCount}</span>
+                      )}
+                    </div>
+                    <div style={styles.lastMessage}>{lastMessage?.content}</div>
+                    <div style={styles.timestamp}>{timeAgo(lastMessage?.createdAt)}</div>
                   </div>
-                  <div style={styles.lastMessage}>{thread.lastMessage}</div>
-                  <div style={styles.timestamp}>{timeAgo(thread.lastMessageAt)}</div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -178,7 +142,7 @@ function Support() {
             ) : (
               <>
                 <div style={styles.chatHeader}>
-                  <strong>{selectedThread.customerName}</strong>
+                  <strong>{selectedThread.customer.name}</strong>
                 </div>
                 <div style={styles.messageList}>
                   {selectedThread.messages.map((msg) => (
