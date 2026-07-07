@@ -8,6 +8,7 @@ const menuItems = [
   { label: 'Users', path: '/users', icon: '👥' },
   { label: 'Riders', path: '/riders', icon: '🛵' },
   { label: 'Support', path: '/support', icon: '💬' },
+  { label: 'Ratings', path: '/ratings', icon: '⭐' },
 ];
 
 function Sidebar() {
