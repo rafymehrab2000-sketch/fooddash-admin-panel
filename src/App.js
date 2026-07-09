@@ -7,6 +7,7 @@ import Restaurants from './pages/Restaurants';
 import Users from './pages/Users';
 import Riders from './pages/Riders';
 import Support from './pages/Support';
+import RiderSupport from './pages/RiderSupport';
 import { SocketProvider, useSocket } from './context/SocketContext';
 import { ToastProvider, useToast } from './components/Toast';
 
@@ -68,6 +69,7 @@ function App() {
             <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
             <Route path="/riders" element={<ProtectedRoute><Riders /></ProtectedRoute>} />
             <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
+            <Route path="/rider-support" element={<ProtectedRoute><RiderSupport /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
       </ToastProvider>
