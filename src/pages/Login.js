@@ -38,7 +38,8 @@ function Login() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.title}>🍔 Admin Panel</h1>
+        <img src="/logo.png" alt="Tuokaa" style={styles.logo} />
+        <h1 style={styles.title}>Admin Panel</h1>
         <p style={styles.subtitle}>Food Delivery Management</p>
 
         {error && <div style={styles.error}>{error}</div>}
@@ -96,6 +97,14 @@ const styles = {
     boxShadow: '0 2px 20px rgba(0,0,0,0.1)',
     width: '100%',
     maxWidth: '400px',
+  },
+  logo: {
+    display: 'block',
+    width: '56px',
+    height: '56px',
+    borderRadius: '14px',
+    objectFit: 'cover',
+    margin: '0 auto 12px',
   },
   title: {
     textAlign: 'center',
