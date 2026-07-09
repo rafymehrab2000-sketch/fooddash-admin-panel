@@ -120,7 +120,14 @@ function Restaurants() {
                     {r.isOpen ? 'Open' : 'Closed'}
                   </span>
                 </div>
-                <h3 style={styles.cardName}>{r.name}</h3>
+                <h3 style={styles.cardName}>
+                  {r.name}
+                  {r.ratingCount > 0 && (
+                    <span style={styles.cardRating}>
+                      ⭐ {r.avgRating.toFixed(1)} ({r.ratingCount})
+                    </span>
+                  )}
+                </h3>
                 <p style={styles.cardDetail}>📍 {r.address}</p>
                 <p style={styles.cardDetail}>📞 {r.phone || 'No phone'}</p>
                 <p style={styles.cardDetail}>
@@ -199,7 +206,11 @@ const styles = {
     padding: '4px 10px', borderRadius: '20px', color: '#fff',
     fontSize: '12px', fontWeight: '600',
   },
-  cardName: { margin: '4px 0', fontSize: '16px', fontWeight: '600', color: '#1a1a1a' },
+  cardName: {
+    margin: '4px 0', fontSize: '16px', fontWeight: '600', color: '#1a1a1a',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+  },
+  cardRating: { fontSize: '13px', fontWeight: '600', color: '#ffb300', whiteSpace: 'nowrap' },
   cardDetail: { margin: '2px 0', fontSize: '13px', color: '#666' },
   deleteButton: {
     backgroundColor: '#ffe0e0', color: '#cc0000', border: 'none',

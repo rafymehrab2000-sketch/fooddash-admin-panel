@@ -66,11 +66,26 @@ function Dashboard() {
     };
   }, [socket, fetchData]);
 
+  const ratingTotals = restaurants.reduce(
+    (acc, r) => {
+      if (r.ratingCount) {
+        acc.weighted += (r.avgRating || 0) * r.ratingCount;
+        acc.count += r.ratingCount;
+      }
+      return acc;
+    },
+    { weighted: 0, count: 0 }
+  );
+  const avgPlatformRating = ratingTotals.count > 0
+    ? (ratingTotals.weighted / ratingTotals.count).toFixed(1)
+    : null;
+
   const statsCards = [
     { label: 'Total Orders', value: stats?.totalOrders || 0, icon: '🧾', color: '#ff6b35' },
     { label: 'Restaurants', value: stats?.totalRestaurants || 0, icon: '🍽️', color: '#4CAF50' },
     { label: 'Total Users', value: stats?.totalUsers || 0, icon: '👤', color: '#2196F3' },
     { label: 'Total Revenue', value: `€${(stats?.totalRevenue || 0).toFixed(2)}`, icon: '💰', color: '#9C27B0' },
+    { label: 'Average Platform Rating', value: avgPlatformRating ? `⭐ ${avgPlatformRating}` : 'N/A', icon: '⭐', color: '#ffb300' },
   ];
 
   return (
@@ -177,7 +192,7 @@ const styles = {
   subtitle: { color: '#888', marginTop: '4px', marginBottom: '30px' },
   loading: { textAlign: 'center', padding: '40px', color: '#888' },
   statsGrid: {
-    display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
     gap: '20px', marginBottom: '30px',
   },
   statCard: {
