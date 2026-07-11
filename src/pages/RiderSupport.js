@@ -22,7 +22,15 @@ function RiderSupport() {
   const [replyText, setReplyText] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [endedRiders, setEndedRiders] = useState({});
+  const [sessionStarts, setSessionStarts] = useState({});
   const messagesEndRef = useRef(null);
+
+  const isEnded = !!endedRiders[selectedRiderId];
+  const sessionStart = sessionStarts[selectedRiderId] || 0;
+  const visibleMessages = messages.filter(
+    msg => new Date(msg.createdAt).getTime() >= sessionStart
+  );
 
   const fetchThreads = useCallback(async () => {
     try {
@@ -70,6 +78,7 @@ function RiderSupport() {
   };
 
   const handleSend = async () => {
+    if (isEnded) return;
     const message = replyText.trim();
     if (!message || !selectedRiderId) return;
 
@@ -88,6 +97,20 @@ function RiderSupport() {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleEndConversation = () => {
+    if (!selectedRiderId) return;
+    if (window.confirm('Are you sure you want to end this conversation?')) {
+      setEndedRiders(prev => ({ ...prev, [selectedRiderId]: true }));
+    }
+  };
+
+  const handleStartNewChat = () => {
+    if (!selectedRiderId) return;
+    setSessionStarts(prev => ({ ...prev, [selectedRiderId]: Date.now() }));
+    setEndedRiders(prev => ({ ...prev, [selectedRiderId]: false }));
+    setReplyText('');
   };
 
   return (
@@ -143,13 +166,21 @@ function RiderSupport() {
             ) : (
               <>
                 <div style={styles.chatHeader}>
-                  <strong>{selectedThread.rider.name}</strong>
-                  {selectedThread.rider.phone && (
-                    <span style={styles.chatHeaderSub}> · {selectedThread.rider.phone}</span>
-                  )}
+                  <div>
+                    <strong>{selectedThread.rider.name}</strong>
+                    {selectedThread.rider.phone && (
+                      <span style={styles.chatHeaderSub}> · {selectedThread.rider.phone}</span>
+                    )}
+                  </div>
+                  <button
+                    style={styles.endBtn}
+                    onClick={isEnded ? handleStartNewChat : handleEndConversation}
+                  >
+                    {isEnded ? 'Start New Chat' : 'End Conversation'}
+                  </button>
                 </div>
                 <div style={styles.messageList}>
-                  {messages.map((msg) => (
+                  {visibleMessages.map((msg) => (
                     <div
                       key={msg.id}
                       style={{
@@ -176,21 +207,23 @@ function RiderSupport() {
                       </div>
                     </div>
                   ))}
+                  {isEnded && <p style={styles.endedNotice}>Conversation ended</p>}
                   <div ref={messagesEndRef} />
                 </div>
                 <div style={styles.replyRow}>
                   <input
                     style={styles.replyInput}
                     type="text"
-                    placeholder="Type a reply..."
+                    placeholder={isEnded ? 'Conversation ended' : 'Type a reply...'}
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     onKeyDown={handleKeyDown}
+                    disabled={isEnded}
                   />
                   <button
                     style={styles.sendButton}
                     onClick={handleSend}
-                    disabled={!replyText.trim()}
+                    disabled={isEnded || !replyText.trim()}
                   >
                     Send
                   </button>
@@ -249,8 +282,14 @@ const styles = {
   },
   chatHeader: {
     padding: '16px 20px', borderBottom: '1px solid #eee', fontSize: '15px', color: '#1a1a1a',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
   },
   chatHeaderSub: { color: '#888', fontWeight: 400, fontSize: '13px' },
+  endBtn: {
+    padding: '6px 14px', borderRadius: '14px', border: '1px solid #ddd',
+    backgroundColor: '#fff', color: '#1a1a1a', fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+  },
+  endedNotice: { color: '#888', fontSize: '12px', textAlign: 'center', margin: '8px 0 0' },
   messageList: {
     flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px',
   },
