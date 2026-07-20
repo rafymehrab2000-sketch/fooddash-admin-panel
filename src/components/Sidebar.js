@@ -9,6 +9,7 @@ const menuItems = [
   { label: 'Riders', path: '/riders', icon: '🛵' },
   { label: 'Support', path: '/support', icon: '💬' },
   { label: 'Rider Support', path: '/rider-support', icon: '🛵' },
+  { label: 'Restaurant Support', path: '/restaurant-support', icon: '🍽️' },
   { label: 'Ratings', path: '/ratings', icon: '⭐' },
 ];
 
@@ -25,7 +26,10 @@ function Sidebar() {
   return (
     <div style={styles.sidebar}>
       <div style={styles.logo}>
-        <h2 style={styles.logoText}>🍔 FoodDash</h2>
+        <div style={styles.logoRow}>
+          <img src="/logo.png" alt="Tuokaa" style={styles.logoImg} />
+          <h2 style={styles.logoText}>Tuokaa</h2>
+        </div>
         <p style={styles.logoSub}>Admin Panel</p>
       </div>
 
@@ -67,6 +71,18 @@ const styles = {
   logo: {
     padding: '24px 20px',
     borderBottom: '1px solid #2a2a4a',
+  },
+  logoRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  logoImg: {
+    width: '28px',
+    height: '28px',
+    borderRadius: '6px',
+    objectFit: 'cover',
+    flexShrink: 0,
   },
   logoText: {
     color: '#fff',

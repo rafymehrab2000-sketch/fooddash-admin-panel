@@ -15,26 +15,26 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString();
 }
 
-function RiderSupport() {
+function RestaurantSupport() {
   const [threads, setThreads] = useState([]);
-  const [selectedRiderId, setSelectedRiderId] = useState(null);
+  const [selectedOwnerId, setSelectedOwnerId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [replyText, setReplyText] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [endedRiders, setEndedRiders] = useState({});
+  const [endedOwners, setEndedOwners] = useState({});
   const [sessionStarts, setSessionStarts] = useState({});
   const messagesEndRef = useRef(null);
 
-  const isEnded = !!endedRiders[selectedRiderId];
-  const sessionStart = sessionStarts[selectedRiderId] || 0;
+  const isEnded = !!endedOwners[selectedOwnerId];
+  const sessionStart = sessionStarts[selectedOwnerId] || 0;
   const visibleMessages = messages.filter(
     msg => new Date(msg.createdAt).getTime() >= sessionStart
   );
 
   const fetchThreads = useCallback(async () => {
     try {
-      const response = await API.get('/rider-support/threads');
+      const response = await API.get('/restaurant-support/threads');
       setThreads(response.data);
       setError('');
     } catch (err) {
@@ -49,10 +49,10 @@ function RiderSupport() {
     return () => clearInterval(interval);
   }, [fetchThreads]);
 
-  const fetchMessages = useCallback(async (riderId) => {
-    if (!riderId) return;
+  const fetchMessages = useCallback(async (ownerId) => {
+    if (!ownerId) return;
     try {
-      const response = await API.get(`/rider-support/threads/${riderId}/messages`);
+      const response = await API.get(`/restaurant-support/threads/${ownerId}/messages`);
       setMessages(response.data);
     } catch (err) {
       setError('Failed to load conversation');
@@ -60,32 +60,32 @@ function RiderSupport() {
   }, []);
 
   useEffect(() => {
-    if (!selectedRiderId) return;
-    fetchMessages(selectedRiderId);
-    const interval = setInterval(() => fetchMessages(selectedRiderId), REFRESH_INTERVAL);
+    if (!selectedOwnerId) return;
+    fetchMessages(selectedOwnerId);
+    const interval = setInterval(() => fetchMessages(selectedOwnerId), REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, [selectedRiderId, fetchMessages]);
+  }, [selectedOwnerId, fetchMessages]);
 
-  const selectedThread = threads.find(t => t.rider.id === selectedRiderId) || null;
+  const selectedThread = threads.find(t => t.owner.id === selectedOwnerId) || null;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
 
-  const handleSelectRider = (riderId) => {
-    setSelectedRiderId(riderId);
-    setThreads(prev => prev.map(t => t.riderId === riderId ? { ...t, unreadByAdmin: 0 } : t));
+  const handleSelectOwner = (ownerId) => {
+    setSelectedOwnerId(ownerId);
+    setThreads(prev => prev.map(t => t.ownerId === ownerId ? { ...t, unreadByAdmin: 0 } : t));
   };
 
   const handleSend = async () => {
     if (isEnded) return;
     const message = replyText.trim();
-    if (!message || !selectedRiderId) return;
+    if (!message || !selectedOwnerId) return;
 
     try {
-      await API.post(`/rider-support/threads/${selectedRiderId}/messages`, { message });
+      await API.post(`/restaurant-support/threads/${selectedOwnerId}/messages`, { message });
       setReplyText('');
-      fetchMessages(selectedRiderId);
+      fetchMessages(selectedOwnerId);
       fetchThreads();
     } catch (err) {
       setError('Failed to send reply');
@@ -100,16 +100,16 @@ function RiderSupport() {
   };
 
   const handleEndConversation = () => {
-    if (!selectedRiderId) return;
+    if (!selectedOwnerId) return;
     if (window.confirm('Are you sure you want to end this conversation?')) {
-      setEndedRiders(prev => ({ ...prev, [selectedRiderId]: true }));
+      setEndedOwners(prev => ({ ...prev, [selectedOwnerId]: true }));
     }
   };
 
   const handleStartNewChat = () => {
-    if (!selectedRiderId) return;
-    setSessionStarts(prev => ({ ...prev, [selectedRiderId]: Date.now() }));
-    setEndedRiders(prev => ({ ...prev, [selectedRiderId]: false }));
+    if (!selectedOwnerId) return;
+    setSessionStarts(prev => ({ ...prev, [selectedOwnerId]: Date.now() }));
+    setEndedOwners(prev => ({ ...prev, [selectedOwnerId]: false }));
     setReplyText('');
   };
 
@@ -119,9 +119,9 @@ function RiderSupport() {
       <div style={styles.main}>
         <div style={styles.titleRow}>
           <div>
-            <h1 style={styles.title}>🛵 Rider Support</h1>
+            <h1 style={styles.title}>🍽️ Restaurant Support</h1>
             <p style={styles.subtitle}>
-              {threads.length} rider conversation{threads.length !== 1 ? 's' : ''}
+              {threads.length} restaurant conversation{threads.length !== 1 ? 's' : ''}
             </p>
           </div>
         </div>
@@ -129,8 +129,8 @@ function RiderSupport() {
         {error && <div style={styles.error}>{error}</div>}
 
         <div style={styles.chatWrapper}>
-          {/* Left: rider list */}
-          <div style={styles.riderList}>
+          {/* Left: restaurant owner list */}
+          <div style={styles.ownerList}>
             {loading ? (
               <div style={styles.loading}>Loading...</div>
             ) : threads.length === 0 ? (
@@ -138,16 +138,16 @@ function RiderSupport() {
             ) : (
               threads.map((thread) => (
                 <div
-                  key={thread.riderId}
+                  key={thread.ownerId}
                   style={
-                    selectedRiderId === thread.rider.id
-                      ? styles.riderItemActive
-                      : styles.riderItem
+                    selectedOwnerId === thread.owner.id
+                      ? styles.ownerItemActive
+                      : styles.ownerItem
                   }
-                  onClick={() => handleSelectRider(thread.rider.id)}
+                  onClick={() => handleSelectOwner(thread.owner.id)}
                 >
-                  <div style={styles.riderRow}>
-                    <span style={styles.riderName}>{thread.rider.name}</span>
+                  <div style={styles.ownerRow}>
+                    <span style={styles.ownerName}>{thread.owner.name}</span>
                     {thread.unreadByAdmin > 0 && (
                       <span style={styles.unreadBadge}>{thread.unreadByAdmin}</span>
                     )}
@@ -162,14 +162,14 @@ function RiderSupport() {
           {/* Right: chat thread */}
           <div style={styles.chatPanel}>
             {!selectedThread ? (
-              <div style={styles.noSelection}>Select a rider to view the conversation</div>
+              <div style={styles.noSelection}>Select a restaurant owner to view the conversation</div>
             ) : (
               <>
                 <div style={styles.chatHeader}>
                   <div>
-                    <strong>{selectedThread.rider.name}</strong>
-                    {selectedThread.rider.phone && (
-                      <span style={styles.chatHeaderSub}> · {selectedThread.rider.phone}</span>
+                    <strong>{selectedThread.owner.name}</strong>
+                    {selectedThread.owner.phone && (
+                      <span style={styles.chatHeaderSub}> · {selectedThread.owner.phone}</span>
                     )}
                   </div>
                   <button
@@ -192,7 +192,7 @@ function RiderSupport() {
                         style={
                           msg.senderType === 'admin'
                             ? styles.bubbleAdmin
-                            : styles.bubbleRider
+                            : styles.bubbleOwner
                         }
                       >
                         <div>{msg.message}</div>
@@ -252,20 +252,20 @@ const styles = {
     boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden',
     minHeight: '600px',
   },
-  riderList: {
+  ownerList: {
     width: '300px', borderRight: '1px solid #eee', overflowY: 'auto',
   },
   loading: { textAlign: 'center', padding: '40px', color: '#888' },
   empty: { textAlign: 'center', padding: '40px', color: '#888', fontSize: '14px' },
-  riderItem: {
+  ownerItem: {
     padding: '14px 16px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer',
   },
-  riderItemActive: {
+  ownerItemActive: {
     padding: '14px 16px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer',
     backgroundColor: '#fff3ec',
   },
-  riderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  riderName: { fontWeight: '600', fontSize: '14px', color: '#1a1a1a' },
+  ownerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  ownerName: { fontWeight: '600', fontSize: '14px', color: '#1a1a1a' },
   unreadBadge: {
     backgroundColor: '#ff6b35', color: '#fff', fontSize: '11px', fontWeight: '700',
     borderRadius: '10px', padding: '2px 7px', minWidth: '18px', textAlign: 'center',
@@ -298,7 +298,7 @@ const styles = {
     backgroundColor: '#ff6b35', color: '#fff', padding: '10px 14px',
     borderRadius: '14px 14px 2px 14px', maxWidth: '60%', fontSize: '14px',
   },
-  bubbleRider: {
+  bubbleOwner: {
     backgroundColor: '#eee', color: '#1a1a1a', padding: '10px 14px',
     borderRadius: '14px 14px 14px 2px', maxWidth: '60%', fontSize: '14px',
   },
@@ -317,4 +317,4 @@ const styles = {
   },
 };
 
-export default RiderSupport;
+export default RestaurantSupport;
