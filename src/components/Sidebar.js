@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { getApplications } from '../services/api';
+
+const REFRESH_INTERVAL = 15000;
 
 const menuItems = [
   { label: 'Dashboard', path: '/dashboard', icon: '📊' },
   { label: 'Orders', path: '/orders', icon: '🧾' },
+  { label: 'Applications', path: '/applications', icon: '📝' },
   { label: 'Restaurants', path: '/restaurants', icon: '🍽️' },
   { label: 'Users', path: '/users', icon: '👥' },
   { label: 'Riders', path: '/riders', icon: '🛵' },
@@ -16,6 +20,22 @@ const menuItems = [
 function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const fetchPendingCount = useCallback(async () => {
+    try {
+      const response = await getApplications();
+      setPendingCount(response.data.filter((a) => a.status === 'pending').length);
+    } catch {
+      // ignore — badge just won't update this cycle
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [fetchPendingCount]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -45,7 +65,10 @@ function Sidebar() {
             onClick={() => navigate(item.path)}
           >
             <span style={styles.icon}>{item.icon}</span>
-            <span>{item.label}</span>
+            <span style={styles.menuLabel}>{item.label}</span>
+            {item.path === '/applications' && pendingCount > 0 && (
+              <span style={styles.badge}>{pendingCount}</span>
+            )}
           </div>
         ))}
       </nav>
@@ -121,6 +144,19 @@ const styles = {
   },
   icon: {
     fontSize: '18px',
+  },
+  menuLabel: {
+    flex: 1,
+  },
+  badge: {
+    backgroundColor: '#f44336',
+    color: '#fff',
+    fontSize: '11px',
+    fontWeight: '700',
+    borderRadius: '10px',
+    padding: '2px 7px',
+    minWidth: '18px',
+    textAlign: 'center',
   },
   logout: {
     padding: '20px',

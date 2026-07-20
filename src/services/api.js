@@ -17,4 +17,8 @@ API.interceptors.request.use((config) => {
 export const loginUser = (data) => API.post('/auth/login', data);
 export const getCurrentUser = () => API.get('/auth/me');
 
+// Applications
+export const getApplications = () => API.get('/applications');
+export const updateApplicationStatus = (id, status) => API.put(`/applications/${id}/status`, { status });
+
 export default API;
