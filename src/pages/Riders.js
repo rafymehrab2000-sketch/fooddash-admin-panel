@@ -8,6 +8,8 @@ function Riders() {
 
   useEffect(() => {
     fetchRiders();
+    const interval = setInterval(fetchRiders, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchRiders = async () => {
@@ -45,6 +47,7 @@ function Riders() {
                   <th style={styles.th}>ID</th>
                   <th style={styles.th}>Name</th>
                   <th style={styles.th}>Email</th>
+                  <th style={styles.th}>Status</th>
                   <th style={styles.th}>Joined</th>
                 </tr>
               </thead>
@@ -54,6 +57,12 @@ function Riders() {
                     <td style={styles.td}>#{rider.id}</td>
                     <td style={styles.td}>{rider.name}</td>
                     <td style={styles.td}>{rider.email}</td>
+                    <td style={styles.td}>
+                      <span style={rider.isOnline ? styles.badgeOnline : styles.badgeOffline}>
+                        <span style={rider.isOnline ? styles.dotOnline : styles.dotOffline} />
+                        {rider.isOnline ? 'Online' : 'Offline'}
+                      </span>
+                    </td>
                     <td style={styles.td}>
                       {new Date(rider.createdAt).toLocaleDateString()}
                     </td>
@@ -92,6 +101,18 @@ const styles = {
   },
   tableRow: { borderBottom: '1px solid #f0f0f0' },
   td: { padding: '14px 16px', fontSize: '14px', color: '#333' },
+  badgeOnline: {
+    display: 'inline-flex', alignItems: 'center', gap: '6px',
+    padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+    backgroundColor: '#e6f7ec', color: '#1e7f4b',
+  },
+  badgeOffline: {
+    display: 'inline-flex', alignItems: 'center', gap: '6px',
+    padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+    backgroundColor: '#f0f0f0', color: '#777',
+  },
+  dotOnline: { width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2fae66' },
+  dotOffline: { width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#999' },
 };
 
 export default Riders;
