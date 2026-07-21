@@ -89,7 +89,7 @@ function Support() {
   return (
     <div style={styles.container}>
       <Sidebar />
-      <div style={styles.main}>
+      <div className="admin-main" style={styles.main}>
         <div style={styles.titleRow}>
           <div>
             <h1 style={styles.title}>💬 Support</h1>

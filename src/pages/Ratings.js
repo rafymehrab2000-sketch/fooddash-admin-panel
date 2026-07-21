@@ -65,7 +65,7 @@ function Ratings() {
   return (
     <div style={styles.container}>
       <Sidebar />
-      <div style={styles.main}>
+      <div className="admin-main" style={styles.main}>
         <h1 style={styles.title}>⭐ Ratings</h1>
         <p style={styles.subtitle}>Customer feedback on restaurants and riders</p>
 

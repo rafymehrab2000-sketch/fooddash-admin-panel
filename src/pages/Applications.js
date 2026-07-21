@@ -60,7 +60,7 @@ function Applications() {
   return (
     <div style={styles.container}>
       <Sidebar />
-      <div style={styles.main}>
+      <div className="admin-main" style={styles.main}>
         <div style={styles.header}>
           <div>
             <h1 style={styles.title}>📝 Applications</h1>

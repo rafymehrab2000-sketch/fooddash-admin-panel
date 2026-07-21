@@ -2,114 +2,99 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../components/Sidebar';
 import API from '../services/api';
 import { useSocket } from '../context/SocketContext';
+import { colors, getStatusColor } from '../theme';
 
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'pending': return '#ff9800';
-    case 'accepted': return '#2196F3';
-    case 'preparing': return '#9C27B0';
-    case 'out_for_delivery': return '#00BCD4';
-    case 'delivered': return '#4CAF50';
-    case 'cancelled': return '#f44336';
-    default: return '#888';
-  }
+const REFRESH_INTERVAL = 20000;
+
+const healthLabel = {
+  ok: { text: 'Operational', color: colors.success },
+  error: { text: 'Down', color: colors.danger },
+  not_configured: { text: 'Not configured', color: '#999' },
 };
+
+const activityIcon = { order: '🧾', application: '📝', registration: '👤' };
 
 function Dashboard() {
   const { socket } = useSocket();
-  const [orders, setOrders] = useState([]);
-  const [restaurants, setRestaurants] = useState([]);
-  const [stats, setStats] = useState(null);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     try {
-      const [ordersRes, restaurantsRes, statsRes] = await Promise.all([
-        API.get('/orders'),
-        API.get('/restaurants'),
-        API.get('/users/stats'),
-      ]);
-      setOrders(ordersRes.data);
-      setRestaurants(restaurantsRes.data);
-      setStats(statsRes.data);
+      const res = await API.get('/admin/dashboard');
+      setSummary(res.data);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     }
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [fetchData]);
 
   useEffect(() => {
     if (!socket) return;
-
-    const handleNewOrder = () => fetchData();
-
-    const handleStatusChanged = (data) => {
-      const { orderId, status } = data ?? {};
-      if (!orderId || !status) return;
-      setOrders(prev =>
-        prev.map(o => o.id === orderId ? { ...o, status } : o)
-      );
-      if (status === 'delivered') {
-        setStats(prev => prev ? { ...prev, totalRevenue: (prev.totalRevenue ?? 0) } : prev);
-        fetchData();
-      }
-    };
-
-    socket.on('new_order', handleNewOrder);
-    socket.on('order_status_changed', handleStatusChanged);
-
+    const refresh = () => fetchData();
+    socket.on('new_order', refresh);
+    socket.on('order_status_changed', refresh);
     return () => {
-      socket.off('new_order', handleNewOrder);
-      socket.off('order_status_changed', handleStatusChanged);
+      socket.off('new_order', refresh);
+      socket.off('order_status_changed', refresh);
     };
   }, [socket, fetchData]);
 
-  const ratingTotals = restaurants.reduce(
-    (acc, r) => {
-      if (r.ratingCount) {
-        acc.weighted += (r.avgRating || 0) * r.ratingCount;
-        acc.count += r.ratingCount;
-      }
-      return acc;
-    },
-    { weighted: 0, count: 0 }
-  );
-  const avgPlatformRating = ratingTotals.count > 0
-    ? (ratingTotals.weighted / ratingTotals.count).toFixed(1)
-    : null;
+  const statsCards = summary ? [
+    { label: 'Live Orders', value: summary.liveOrderCount, icon: '🧾', color: '#ff6b35' },
+    { label: 'Active Restaurants', value: summary.activeRestaurants, icon: '🍽️', color: '#4CAF50' },
+    { label: 'Riders Online', value: summary.activeRidersOnline, icon: '🛵', color: '#2196F3' },
+    { label: 'Pending Applications', value: summary.pendingApplications, icon: '📝', color: '#9C27B0' },
+  ] : [];
 
-  const statsCards = [
-    { label: 'Total Orders', value: stats?.totalOrders || 0, icon: '🧾', color: '#ff6b35' },
-    { label: 'Restaurants', value: stats?.totalRestaurants || 0, icon: '🍽️', color: '#4CAF50' },
-    { label: 'Total Users', value: stats?.totalUsers || 0, icon: '👤', color: '#2196F3' },
-    { label: 'Total Revenue', value: `€${(stats?.totalRevenue || 0).toFixed(2)}`, icon: '💰', color: '#9C27B0' },
-    { label: 'Average Platform Rating', value: avgPlatformRating ? `⭐ ${avgPlatformRating}` : 'N/A', icon: '⭐', color: '#ffb300' },
-  ];
+  const revenueCards = summary ? [
+    { label: 'Today', value: summary.revenue.today },
+    { label: 'This Week', value: summary.revenue.week },
+    { label: 'This Month', value: summary.revenue.month },
+    { label: 'All Time', value: summary.revenue.allTime },
+  ] : [];
 
   return (
     <div style={styles.container}>
       <Sidebar />
-      <div style={styles.main}>
-        <h1 style={styles.title}>Dashboard</h1>
-        <p style={styles.subtitle}>
-          {new Date().toLocaleDateString('en-FI', {
-            weekday: 'long', year: 'numeric',
-            month: 'long', day: 'numeric'
-          })}
-        </p>
+      <div className="admin-main" style={styles.main}>
+        <div style={styles.titleRow}>
+          <div>
+            <h1 style={styles.title}>Dashboard</h1>
+            <p style={styles.subtitle}>
+              {new Date().toLocaleDateString('en-FI', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+          {summary && (
+            <div style={styles.healthRow}>
+              {['backend', 'database', 'payments'].map((key) => {
+                const status = healthLabel[summary.health[key]] || healthLabel.error;
+                return (
+                  <div key={key} style={styles.healthChip}>
+                    <span style={{ ...styles.healthDot, backgroundColor: status.color }} />
+                    <span style={styles.healthLabel}>{key}</span>
+                    <span style={{ color: status.color, fontWeight: 700, fontSize: 12 }}>{status.text}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {loading ? (
           <div style={styles.loading}>Loading dashboard...</div>
         ) : (
           <>
-            <div style={styles.statsGrid}>
+            <div className="admin-stats-grid" style={styles.statsGrid}>
               {statsCards.map((stat) => (
                 <div key={stat.label} style={styles.statCard}>
-                  <div style={{ ...styles.iconBox, backgroundColor: stat.color }}>
-                    {stat.icon}
-                  </div>
+                  <div style={{ ...styles.iconBox, backgroundColor: stat.color }}>{stat.icon}</div>
                   <div>
                     <p style={styles.statValue}>{stat.value}</p>
                     <p style={styles.statLabel}>{stat.label}</p>
@@ -118,64 +103,50 @@ function Dashboard() {
               ))}
             </div>
 
-            <div style={styles.recentBox}>
-              <h2 style={styles.recentTitle}>🧾 Recent Orders</h2>
-              {orders.length === 0 ? (
-                <p style={{ color: '#888' }}>No orders yet.</p>
-              ) : (
-                <table style={styles.table}>
-                  <thead>
-                    <tr style={styles.tableHeader}>
-                      <th style={styles.th}>ID</th>
-                      <th style={styles.th}>Customer</th>
-                      <th style={styles.th}>Restaurant</th>
-                      <th style={styles.th}>Total</th>
-                      <th style={styles.th}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.slice(0, 5).map((order) => (
-                      <tr key={order.id} style={styles.tableRow}>
-                        <td style={styles.td}>#{order.id}</td>
-                        <td style={styles.td}>{order.customerName}</td>
-                        <td style={styles.td}>{order.restaurant?.name}</td>
-                        <td style={styles.td}>€{order.total?.toFixed(2)}</td>
-                        <td style={styles.td}>
-                          <span style={{
-                            ...styles.badge,
-                            backgroundColor: getStatusColor(order.status),
-                            transition: 'background-color 0.4s ease',
-                          }}>
-                            {order.status?.replace('_', ' ')}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+            <h2 style={styles.sectionHeading}>💰 Revenue</h2>
+            <div className="admin-stats-grid" style={styles.statsGrid}>
+              {revenueCards.map((r) => (
+                <div key={r.label} style={styles.revenueCard}>
+                  <p style={styles.revenueValue}>€{r.value.toFixed(2)}</p>
+                  <p style={styles.statLabel}>{r.label}</p>
+                </div>
+              ))}
             </div>
 
-            <div style={styles.restaurantsBox}>
-              <h2 style={styles.recentTitle}>🍽️ Restaurants Overview</h2>
-              <div style={styles.restaurantGrid}>
-                {restaurants.map((r) => (
-                  <div key={r.id} style={styles.restaurantCard}>
-                    <div style={styles.restaurantTop}>
-                      <span style={styles.restaurantName}>{r.name}</span>
-                      <span style={{
-                        ...styles.statusDot,
-                        backgroundColor: r.isOpen ? '#4CAF50' : '#f44336'
-                      }}>
-                        {r.isOpen ? 'Open' : 'Closed'}
-                      </span>
-                    </div>
-                    <p style={styles.restaurantDetail}>📍 {r.address}</p>
-                    <p style={styles.restaurantDetail}>
-                      🍴 {r.menuItems?.length || 0} menu items
-                    </p>
+            <div className="admin-two-col" style={styles.twoCol}>
+              <div style={styles.recentBox}>
+                <h2 style={styles.recentTitle}>🕒 Recent Activity</h2>
+                {summary.recentActivity.length === 0 ? (
+                  <p style={{ color: colors.textMuted }}>No recent activity.</p>
+                ) : (
+                  <div>
+                    {summary.recentActivity.map((a) => (
+                      <div key={`${a.type}-${a.id}`} style={styles.activityRow}>
+                        <span style={styles.activityIcon}>{activityIcon[a.type] || '•'}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={styles.activityTitle}>{a.title}</div>
+                          <div style={styles.activityDetail}>{a.detail}</div>
+                        </div>
+                        <span style={styles.activityTime}>{new Date(a.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
+              </div>
+
+              <div style={styles.recentBox}>
+                <h2 style={styles.recentTitle}>🧾 Live Order Snapshot</h2>
+                <p style={styles.snapshotText}>
+                  <strong style={{ fontSize: 32, color: colors.navy }}>{summary.liveOrderCount}</strong>
+                  <br />orders currently in progress (not delivered or cancelled)
+                </p>
+                <div style={styles.legendRow}>
+                  {['pending', 'accepted', 'preparing', 'ready', 'out_for_delivery'].map((s) => (
+                    <span key={s} style={{ ...styles.legendChip, backgroundColor: getStatusColor(s) }}>
+                      {s.replace(/_/g, ' ')}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </>
@@ -186,64 +157,35 @@ function Dashboard() {
 }
 
 const styles = {
-  container: { display: 'flex', minHeight: '100vh', backgroundColor: '#f0f2f5' },
+  container: { display: 'flex', minHeight: '100vh', backgroundColor: colors.bg },
   main: { marginLeft: '240px', padding: '40px', flex: 1 },
-  title: { fontSize: '28px', fontWeight: '700', color: '#1a1a1a', margin: 0 },
-  subtitle: { color: '#888', marginTop: '4px', marginBottom: '30px' },
-  loading: { textAlign: 'center', padding: '40px', color: '#888' },
-  statsGrid: {
-    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '20px', marginBottom: '30px',
-  },
-  statCard: {
-    backgroundColor: '#fff', borderRadius: '12px', padding: '20px',
-    display: 'flex', alignItems: 'center', gap: '16px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-  },
-  iconBox: {
-    width: '50px', height: '50px', borderRadius: '10px',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px',
-  },
-  statValue: { fontSize: '24px', fontWeight: '700', margin: 0, color: '#1a1a1a' },
-  statLabel: { fontSize: '13px', color: '#888', margin: '2px 0 0' },
-  recentBox: {
-    backgroundColor: '#fff', borderRadius: '12px', padding: '24px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '24px',
-  },
-  recentTitle: { fontSize: '18px', fontWeight: '600', margin: '0 0 20px', color: '#1a1a1a' },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  tableHeader: { backgroundColor: '#f8f9fa' },
-  th: {
-    padding: '12px 16px', textAlign: 'left', fontSize: '13px',
-    fontWeight: '600', color: '#555', borderBottom: '1px solid #eee',
-  },
-  tableRow: { borderBottom: '1px solid #f0f0f0' },
-  td: { padding: '12px 16px', fontSize: '14px', color: '#333' },
-  badge: {
-    padding: '4px 10px', borderRadius: '20px', color: '#fff',
-    fontSize: '12px', fontWeight: '600', textTransform: 'capitalize',
-  },
-  restaurantsBox: {
-    backgroundColor: '#fff', borderRadius: '12px', padding: '24px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-  },
-  restaurantGrid: {
-    display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px',
-  },
-  restaurantCard: {
-    backgroundColor: '#f8f9fa', borderRadius: '10px',
-    padding: '16px', border: '1px solid #eee',
-  },
-  restaurantTop: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: '8px',
-  },
-  restaurantName: { fontWeight: '600', fontSize: '14px', color: '#1a1a1a' },
-  statusDot: {
-    padding: '3px 8px', borderRadius: '20px', color: '#fff',
-    fontSize: '11px', fontWeight: '600',
-  },
-  restaurantDetail: { fontSize: '12px', color: '#666', margin: '2px 0' },
+  titleRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 },
+  title: { fontSize: '28px', fontWeight: '700', color: colors.text, margin: 0 },
+  subtitle: { color: colors.textMuted, marginTop: '4px', marginBottom: '20px' },
+  healthRow: { display: 'flex', gap: 10, flexWrap: 'wrap' },
+  healthChip: { display: 'flex', alignItems: 'center', gap: 6, backgroundColor: '#fff', padding: '8px 12px', borderRadius: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' },
+  healthDot: { width: 8, height: 8, borderRadius: 4 },
+  healthLabel: { fontSize: 12, color: colors.textMuted, textTransform: 'capitalize' },
+  loading: { textAlign: 'center', padding: '40px', color: colors.textMuted },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '20px' },
+  statCard: { backgroundColor: '#fff', borderRadius: '12px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
+  iconBox: { width: '50px', height: '50px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' },
+  statValue: { fontSize: '24px', fontWeight: '700', margin: 0, color: colors.text },
+  statLabel: { fontSize: '13px', color: colors.textMuted, margin: '2px 0 0' },
+  sectionHeading: { fontSize: 16, fontWeight: 700, color: colors.text, margin: '10px 0 14px' },
+  revenueCard: { backgroundColor: colors.navy, borderRadius: '12px', padding: '20px', color: '#fff', textAlign: 'center' },
+  revenueValue: { fontSize: 22, fontWeight: 800, margin: 0, color: colors.amber },
+  twoCol: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 10 },
+  recentBox: { backgroundColor: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '24px' },
+  recentTitle: { fontSize: '18px', fontWeight: '600', margin: '0 0 16px', color: colors.text },
+  activityRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #f0f0f0' },
+  activityIcon: { fontSize: 18 },
+  activityTitle: { fontSize: 13, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  activityDetail: { fontSize: 12, color: colors.textMuted, textTransform: 'capitalize' },
+  activityTime: { fontSize: 11, color: colors.textMuted, flexShrink: 0 },
+  snapshotText: { fontSize: 13, color: colors.textMuted, lineHeight: 1.6 },
+  legendRow: { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 },
+  legendChip: { padding: '4px 10px', borderRadius: 20, color: '#fff', fontSize: 11, fontWeight: 600, textTransform: 'capitalize' },
 };
 
 export default Dashboard;

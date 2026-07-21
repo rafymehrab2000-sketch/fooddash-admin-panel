@@ -11,6 +11,9 @@ import RiderSupport from './pages/RiderSupport';
 import RestaurantSupport from './pages/RestaurantSupport';
 import Ratings from './pages/Ratings';
 import Applications from './pages/Applications';
+import Customers from './pages/Customers';
+import Settings from './pages/Settings';
+import AuditLog from './pages/AuditLog';
 import { SocketProvider, useSocket } from './context/SocketContext';
 import { ToastProvider, useToast } from './components/Toast';
 
@@ -76,6 +79,9 @@ function App() {
             <Route path="/restaurant-support" element={<ProtectedRoute><RestaurantSupport /></ProtectedRoute>} />
             <Route path="/ratings" element={<ProtectedRoute><Ratings /></ProtectedRoute>} />
             <Route path="/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
+            <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/audit-log" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
       </ToastProvider>

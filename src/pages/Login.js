@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { loginUser } from '../services/api';
+import { colors } from '../theme';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -29,7 +30,7 @@ function Login() {
       }
       window.location.href = '/dashboard';
     } catch (err) {
-      setError('Invalid email or password');
+      setError(err.response?.data?.error || 'Invalid email or password');
     }
 
     setLoading(false);
@@ -85,18 +86,20 @@ function Login() {
 const styles = {
   container: {
     minHeight: '100vh',
-    backgroundColor: '#f0f2f5',
+    backgroundColor: colors.navy,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: '16px',
   },
   card: {
     backgroundColor: '#fff',
     padding: '40px',
-    borderRadius: '12px',
-    boxShadow: '0 2px 20px rgba(0,0,0,0.1)',
+    borderRadius: '16px',
+    boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
     width: '100%',
     maxWidth: '400px',
+    boxSizing: 'border-box',
   },
   logo: {
     display: 'block',
@@ -140,12 +143,12 @@ const styles = {
   button: {
     width: '100%',
     padding: '13px',
-    backgroundColor: '#ff6b35',
-    color: '#fff',
+    backgroundColor: colors.amber,
+    color: colors.navy,
     border: 'none',
     borderRadius: '8px',
     fontSize: '16px',
-    fontWeight: '600',
+    fontWeight: '700',
     cursor: 'pointer',
     marginTop: '10px',
   },
