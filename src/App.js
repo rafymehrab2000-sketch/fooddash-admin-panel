@@ -14,6 +14,9 @@ import Applications from './pages/Applications';
 import Customers from './pages/Customers';
 import Settings from './pages/Settings';
 import AuditLog from './pages/AuditLog';
+import Financial from './pages/Financial';
+import Analytics from './pages/Analytics';
+import Notifications from './pages/Notifications';
 import { SocketProvider, useSocket } from './context/SocketContext';
 import { ToastProvider, useToast } from './components/Toast';
 
@@ -82,6 +85,9 @@ function App() {
             <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/audit-log" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
+            <Route path="/financial" element={<ProtectedRoute><Financial /></ProtectedRoute>} />
+            <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
       </ToastProvider>

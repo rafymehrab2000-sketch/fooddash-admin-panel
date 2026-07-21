@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
+import SupportAssignBar from '../components/SupportAssignBar';
 import API from '../services/api';
 
 const REFRESH_INTERVAL = 10000;
@@ -172,12 +173,22 @@ function RiderSupport() {
                       <span style={styles.chatHeaderSub}> · {selectedThread.rider.phone}</span>
                     )}
                   </div>
-                  <button
-                    style={styles.endBtn}
-                    onClick={isEnded ? handleStartNewChat : handleEndConversation}
-                  >
-                    {isEnded ? 'Start New Chat' : 'End Conversation'}
-                  </button>
+                  <div style={styles.headerRight}>
+                    <SupportAssignBar
+                      channel="rider"
+                      targetId={selectedThread.rider.id}
+                      status={selectedThread.status}
+                      assignedToId={selectedThread.assignedToId}
+                      assignedToName={selectedThread.assignedToName}
+                      onChanged={fetchThreads}
+                    />
+                    <button
+                      style={styles.endBtn}
+                      onClick={isEnded ? handleStartNewChat : handleEndConversation}
+                    >
+                      {isEnded ? 'Start New Chat' : 'End Conversation'}
+                    </button>
+                  </div>
                 </div>
                 <div style={styles.messageList}>
                   {visibleMessages.map((msg) => (
@@ -282,9 +293,10 @@ const styles = {
   },
   chatHeader: {
     padding: '16px 20px', borderBottom: '1px solid #eee', fontSize: '15px', color: '#1a1a1a',
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8,
   },
   chatHeaderSub: { color: '#888', fontWeight: 400, fontSize: '13px' },
+  headerRight: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   endBtn: {
     padding: '6px 14px', borderRadius: '14px', border: '1px solid #ddd',
     backgroundColor: '#fff', color: '#1a1a1a', fontSize: '12px', fontWeight: '600', cursor: 'pointer',

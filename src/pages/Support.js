@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
+import SupportAssignBar from '../components/SupportAssignBar';
 import API from '../services/api';
 
 const REFRESH_INTERVAL = 10000;
@@ -143,6 +144,14 @@ function Support() {
               <>
                 <div style={styles.chatHeader}>
                   <strong>{selectedThread.customer.name}</strong>
+                  <SupportAssignBar
+                    channel="customer"
+                    targetId={selectedThread.customer.id}
+                    status={selectedThread.status}
+                    assignedToId={selectedThread.assignedToId}
+                    assignedToName={selectedThread.assignedToName}
+                    onChanged={fetchMessages}
+                  />
                 </div>
                 <div style={styles.messageList}>
                   {selectedThread.messages.map((msg) => (
@@ -245,6 +254,7 @@ const styles = {
   },
   chatHeader: {
     padding: '16px 20px', borderBottom: '1px solid #eee', fontSize: '15px', color: '#1a1a1a',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8,
   },
   messageList: {
     flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px',

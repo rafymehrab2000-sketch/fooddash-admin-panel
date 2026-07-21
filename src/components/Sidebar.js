@@ -17,6 +17,9 @@ const menuItems = [
   { label: 'Rider Support', path: '/rider-support', icon: '🛵' },
   { label: 'Restaurant Support', path: '/restaurant-support', icon: '🍽️' },
   { label: 'Ratings', path: '/ratings', icon: '⭐' },
+  { label: 'Financial', path: '/financial', icon: '💰' },
+  { label: 'Analytics', path: '/analytics', icon: '📈' },
+  { label: 'Notifications', path: '/notifications', icon: '📣' },
   { label: 'Settings', path: '/settings', icon: '⚙️' },
   { label: 'Audit Log', path: '/audit-log', icon: '🛡️' },
 ];
