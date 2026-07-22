@@ -19,6 +19,7 @@ import Analytics from './pages/Analytics';
 import Notifications from './pages/Notifications';
 import { SocketProvider, useSocket } from './context/SocketContext';
 import { ToastProvider, useToast } from './components/Toast';
+import UpdateNotifier from './components/UpdateNotifier';
 
 const isAuthenticated = () => !!localStorage.getItem('token');
 
@@ -68,6 +69,7 @@ function App() {
   return (
     <SocketProvider>
       <ToastProvider>
+        <UpdateNotifier />
         <SocketListener />
         <BrowserRouter>
           <Routes>
