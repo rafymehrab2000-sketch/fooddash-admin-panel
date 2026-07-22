@@ -1,3 +1,8 @@
+import * as Sentry from "@sentry/react";
+Sentry.init({
+  dsn: "https://b82e00238a5491d0ac960e13eb638690@o4511781218287616.ingest.de.sentry.io/4511781340577872",
+  tracesSampleRate: 1.0,
+});
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
