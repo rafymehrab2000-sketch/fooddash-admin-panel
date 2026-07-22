@@ -114,7 +114,7 @@ function Settings() {
                 onChange={(e) => set('maintenanceMessage', e.target.value)}
                 placeholder="We're currently performing maintenance. Please check back soon." />
             </div>
-            <p style={styles.hint}>Exposed via a public API for the customer, rider and restaurant apps to read and act on — client apps need to be wired up to display it.</p>
+            <p style={styles.hint}>Exposed via GET /api/system/status — the customer, rider and restaurant apps poll this and show a maintenance page when enabled.</p>
           </div>
 
           <div style={styles.card}>

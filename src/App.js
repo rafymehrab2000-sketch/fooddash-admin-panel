@@ -10,6 +10,8 @@ import Support from './pages/Support';
 import RiderSupport from './pages/RiderSupport';
 import RestaurantSupport from './pages/RestaurantSupport';
 import Ratings from './pages/Ratings';
+import Disputes from './pages/Disputes';
+import FraudAlerts from './pages/FraudAlerts';
 import Applications from './pages/Applications';
 import Customers from './pages/Customers';
 import Settings from './pages/Settings';
@@ -83,6 +85,8 @@ function App() {
             <Route path="/rider-support" element={<ProtectedRoute><RiderSupport /></ProtectedRoute>} />
             <Route path="/restaurant-support" element={<ProtectedRoute><RestaurantSupport /></ProtectedRoute>} />
             <Route path="/ratings" element={<ProtectedRoute><Ratings /></ProtectedRoute>} />
+            <Route path="/disputes" element={<ProtectedRoute><Disputes /></ProtectedRoute>} />
+            <Route path="/fraud-alerts" element={<ProtectedRoute><FraudAlerts /></ProtectedRoute>} />
             <Route path="/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
             <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

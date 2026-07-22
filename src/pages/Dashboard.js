@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import API from '../services/api';
 import { useSocket } from '../context/SocketContext';
@@ -15,9 +16,11 @@ const healthLabel = {
 const activityIcon = { order: '🧾', application: '📝', registration: '👤' };
 
 function Dashboard() {
+  const navigate = useNavigate();
   const { socket } = useSocket();
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [fraudAlerts, setFraudAlerts] = useState([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -29,11 +32,21 @@ function Dashboard() {
     setLoading(false);
   }, []);
 
+  const fetchFraudAlerts = useCallback(async () => {
+    try {
+      const res = await API.get('/admin/fraud-alerts', { params: { status: 'open' } });
+      setFraudAlerts(res.data);
+    } catch (err) {
+      console.error('Failed to load fraud alerts:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, REFRESH_INTERVAL);
+    fetchFraudAlerts();
+    const interval = setInterval(() => { fetchData(); fetchFraudAlerts(); }, REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchData]);
+  }, [fetchData, fetchFraudAlerts]);
 
   useEffect(() => {
     if (!socket) return;
@@ -86,6 +99,13 @@ function Dashboard() {
             </div>
           )}
         </div>
+
+        {!loading && fraudAlerts.length > 0 && (
+          <div style={styles.fraudBanner} onClick={() => navigate('/fraud-alerts')}>
+            <span>🚨 {fraudAlerts.length} fraud alert{fraudAlerts.length !== 1 ? 's' : ''} need{fraudAlerts.length === 1 ? 's' : ''} review</span>
+            <span style={styles.fraudBannerLink}>View →</span>
+          </div>
+        )}
 
         {loading ? (
           <div style={styles.loading}>Loading dashboard...</div>
@@ -167,6 +187,12 @@ const styles = {
   healthDot: { width: 8, height: 8, borderRadius: 4 },
   healthLabel: { fontSize: 12, color: colors.textMuted, textTransform: 'capitalize' },
   loading: { textAlign: 'center', padding: '40px', color: colors.textMuted },
+  fraudBanner: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#fff4e0', color: '#8a5a00', padding: '14px 20px', borderRadius: 12,
+    marginBottom: 20, fontSize: 14, fontWeight: 600, cursor: 'pointer',
+  },
+  fraudBannerLink: { fontWeight: 700, textDecoration: 'underline' },
   statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '20px' },
   statCard: { backgroundColor: '#fff', borderRadius: '12px', padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
   iconBox: { width: '50px', height: '50px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' },

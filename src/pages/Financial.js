@@ -8,20 +8,23 @@ function Financial() {
   const [overview, setOverview] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [timeseries, setTimeseries] = useState([]);
+  const [forecast, setForecast] = useState(null);
   const [groupBy, setGroupBy] = useState('day');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const fetchAll = useCallback(async (gb) => {
     try {
-      const [ov, tx, ts] = await Promise.all([
+      const [ov, tx, ts, fc] = await Promise.all([
         API.get('/admin/financial/overview'),
         API.get('/admin/financial/transactions'),
         API.get('/admin/analytics/timeseries', { params: { days: gb === 'month' ? 180 : 30, groupBy: gb } }),
+        API.get('/admin/financial/forecast'),
       ]);
       setOverview(ov.data);
       setTransactions(tx.data);
       setTimeseries(ts.data);
+      setForecast(fc.data);
     } catch {
       setError('Failed to load financial data');
     }
@@ -87,6 +90,34 @@ function Financial() {
           </div>
           <BarChart data={timeseries} labelKey="date" valueKey="revenue" color={colors.amber} formatValue={(v) => `€${v.toFixed(2)}`} />
         </div>
+
+        {forecast && (
+          <div style={styles.card}>
+            <h2 style={styles.cardTitle}>📈 Revenue Forecast (next 30 days)</h2>
+            <p style={styles.hint}>Projected from the last 30 days of delivered orders using linear regression. Lighter bars are the forecast.</p>
+            <div className="admin-stats-grid" style={{ ...styles.statsGrid, marginTop: 16 }}>
+              <div style={styles.statCard}><p style={styles.statValue}>{forecast.predictedOrders30d}</p><p style={styles.statLabel}>Predicted Orders</p></div>
+              <div style={styles.statCard}><p style={styles.statValue}>€{forecast.predictedRevenue30d.toFixed(2)}</p><p style={styles.statLabel}>Predicted Revenue</p></div>
+              <div style={styles.statCard}>
+                <p style={{ ...styles.statValue, color: forecast.revenueGrowthPercent >= 0 ? colors.success : colors.danger }}>
+                  {forecast.revenueGrowthPercent >= 0 ? '+' : ''}{forecast.revenueGrowthPercent}%
+                </p>
+                <p style={styles.statLabel}>Revenue Growth</p>
+              </div>
+            </div>
+            <BarChart
+              data={[
+                ...forecast.history.map((h) => ({ ...h, date: h.date.slice(5), isForecast: false })),
+                ...forecast.forecast.map((f) => ({ ...f, date: f.date.slice(5), isForecast: true })),
+              ]}
+              labelKey="date"
+              valueKey="revenue"
+              color={colors.amber}
+              isForecastKey="isForecast"
+              formatValue={(v) => `€${v.toFixed(2)}`}
+            />
+          </div>
+        )}
 
         <div className="admin-two-col" style={styles.twoCol}>
           <div style={styles.card}>

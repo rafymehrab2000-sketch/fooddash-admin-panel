@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getApplications } from '../services/api';
+import API, { getApplications } from '../services/api';
 import { colors } from '../theme';
 
 const REFRESH_INTERVAL = 15000;
@@ -17,6 +17,8 @@ const menuItems = [
   { label: 'Rider Support', path: '/rider-support', icon: '🛵' },
   { label: 'Restaurant Support', path: '/restaurant-support', icon: '🍽️' },
   { label: 'Ratings', path: '/ratings', icon: '⭐' },
+  { label: 'Disputes', path: '/disputes', icon: '⚖️' },
+  { label: 'Fraud Alerts', path: '/fraud-alerts', icon: '🚨' },
   { label: 'Financial', path: '/financial', icon: '💰' },
   { label: 'Analytics', path: '/analytics', icon: '📈' },
   { label: 'Notifications', path: '/notifications', icon: '📣' },
@@ -28,6 +30,8 @@ function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [pendingCount, setPendingCount] = useState(0);
+  const [openDisputeCount, setOpenDisputeCount] = useState(0);
+  const [openFraudCount, setOpenFraudCount] = useState(0);
   const [open, setOpen] = useState(false);
 
   const fetchPendingCount = useCallback(async () => {
@@ -39,11 +43,25 @@ function Sidebar() {
     }
   }, []);
 
+  const fetchAlertCounts = useCallback(async () => {
+    try {
+      const [disputesRes, fraudRes] = await Promise.all([
+        API.get('/admin/disputes', { params: { status: 'open' } }),
+        API.get('/admin/fraud-alerts', { params: { status: 'open' } }),
+      ]);
+      setOpenDisputeCount(disputesRes.data.length);
+      setOpenFraudCount(fraudRes.data.length);
+    } catch {
+      // ignore — badges just won't update this cycle
+    }
+  }, []);
+
   useEffect(() => {
     fetchPendingCount();
-    const interval = setInterval(fetchPendingCount, REFRESH_INTERVAL);
+    fetchAlertCounts();
+    const interval = setInterval(() => { fetchPendingCount(); fetchAlertCounts(); }, REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchPendingCount]);
+  }, [fetchPendingCount, fetchAlertCounts]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -98,6 +116,12 @@ function Sidebar() {
               <span style={styles.menuLabel}>{item.label}</span>
               {item.path === '/applications' && pendingCount > 0 && (
                 <span style={styles.badge}>{pendingCount}</span>
+              )}
+              {item.path === '/disputes' && openDisputeCount > 0 && (
+                <span style={styles.badge}>{openDisputeCount}</span>
+              )}
+              {item.path === '/fraud-alerts' && openFraudCount > 0 && (
+                <span style={styles.badge}>{openFraudCount}</span>
               )}
             </div>
           ))}
