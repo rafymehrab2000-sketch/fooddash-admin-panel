@@ -17,6 +17,7 @@ import Customers from './pages/Customers';
 import Settings from './pages/Settings';
 import AuditLog from './pages/AuditLog';
 import Financial from './pages/Financial';
+import Payouts from './pages/Payouts';
 import Analytics from './pages/Analytics';
 import Notifications from './pages/Notifications';
 import { SocketProvider, useSocket } from './context/SocketContext';
@@ -92,6 +93,7 @@ function App() {
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/audit-log" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
             <Route path="/financial" element={<ProtectedRoute><Financial /></ProtectedRoute>} />
+            <Route path="/payouts" element={<ProtectedRoute><Payouts /></ProtectedRoute>} />
             <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
             <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           </Routes>

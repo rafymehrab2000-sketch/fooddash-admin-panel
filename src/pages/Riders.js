@@ -3,6 +3,9 @@ import Sidebar from '../components/Sidebar';
 import API from '../services/api';
 import { colors } from '../theme';
 
+const PAYOUT_LABELS = { not_started: 'Not connected', pending: 'Pending', complete: 'Connected' };
+const PAYOUT_COLORS = { not_started: '#888', pending: colors.warning, complete: colors.success };
+
 function Riders() {
   const [riders, setRiders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -161,6 +164,7 @@ function Riders() {
                   <th style={styles.th}>Status</th>
                   <th style={styles.th}>Deliveries</th>
                   <th style={styles.th}>Earnings</th>
+                  <th style={styles.th}>Payouts</th>
                   <th style={styles.th}>Joined</th>
                   <th style={styles.th}>Actions</th>
                 </tr>
@@ -182,6 +186,11 @@ function Riders() {
                     </td>
                     <td style={styles.td}>{rider.deliveries ?? '—'}</td>
                     <td style={styles.td}>{rider.earnings != null ? `€${rider.earnings.toFixed(2)}` : '—'}</td>
+                    <td style={styles.td}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: PAYOUT_COLORS[rider.stripeOnboardingStatus] || '#888' }}>
+                        {PAYOUT_LABELS[rider.stripeOnboardingStatus] || 'Not connected'}
+                      </span>
+                    </td>
                     <td style={styles.td}>{new Date(rider.createdAt).toLocaleDateString()}</td>
                     <td style={styles.td}>
                       <div style={styles.actionCol}>

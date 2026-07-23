@@ -155,7 +155,7 @@ function Financial() {
                 </tbody>
               </table>
             </div>
-            <p style={styles.hint}>"Owed" figures are computed from completed deliveries — there's no Stripe Connect payout integration, so these are informational, not automated transfers.</p>
+            <p style={styles.hint}>"Owed" figures are computed from completed deliveries. Restaurants and riders with Stripe Connect enabled are paid automatically — see the <a href="/payouts" style={{ color: colors.info }}>Payouts</a> page for connection status and payout history.</p>
           </div>
         </div>
 

@@ -20,6 +20,7 @@ const menuItems = [
   { label: 'Disputes', path: '/disputes', icon: '⚖️' },
   { label: 'Fraud Alerts', path: '/fraud-alerts', icon: '🚨' },
   { label: 'Financial', path: '/financial', icon: '💰' },
+  { label: 'Payouts', path: '/payouts', icon: '🏦' },
   { label: 'Analytics', path: '/analytics', icon: '📈' },
   { label: 'Notifications', path: '/notifications', icon: '📣' },
   { label: 'Settings', path: '/settings', icon: '⚙️' },

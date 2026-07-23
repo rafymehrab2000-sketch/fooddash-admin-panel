@@ -3,6 +3,9 @@ import Sidebar from '../components/Sidebar';
 import API from '../services/api';
 import { colors } from '../theme';
 
+const PAYOUT_LABELS = { not_started: 'Payouts: not connected', pending: 'Payouts: pending', complete: 'Payouts: connected' };
+const PAYOUT_COLORS = { not_started: '#888', pending: colors.warning, complete: colors.success };
+
 function Restaurants() {
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -214,6 +217,9 @@ function Restaurants() {
                   </div>
                 )}
                 <p style={styles.cardDetail}>🕒 Joined {new Date(r.createdAt).toLocaleDateString()}</p>
+                <span style={{ ...styles.statusBadge, backgroundColor: PAYOUT_COLORS[r.stripeOnboardingStatus] || '#888', width: 'fit-content' }}>
+                  {PAYOUT_LABELS[r.stripeOnboardingStatus] || 'Payouts: not connected'}
+                </span>
 
                 <div style={styles.cardActions}>
                   <button style={styles.actionBtn} disabled={busyId === r.id} onClick={() => openDetail(r)}>Orders</button>
