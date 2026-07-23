@@ -21,8 +21,10 @@ import Payouts from './pages/Payouts';
 import Analytics from './pages/Analytics';
 import Notifications from './pages/Notifications';
 import { SocketProvider, useSocket } from './context/SocketContext';
+import { SystemStatusProvider } from './context/SystemStatusContext';
 import { ToastProvider, useToast } from './components/Toast';
 import UpdateNotifier from './components/UpdateNotifier';
+import AnnouncementBanner from './components/AnnouncementBanner';
 
 const isAuthenticated = () => !!localStorage.getItem('token');
 
@@ -70,10 +72,14 @@ function SocketListener() {
 
 function App() {
   return (
+    <SystemStatusProvider>
     <SocketProvider>
       <ToastProvider>
         <UpdateNotifier />
         <SocketListener />
+        {/* No MaintenanceGate here on purpose — the admin panel must stay
+            accessible even when maintenance mode is enabled for everyone else. */}
+        <AnnouncementBanner />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Login />} />
@@ -100,6 +106,7 @@ function App() {
         </BrowserRouter>
       </ToastProvider>
     </SocketProvider>
+    </SystemStatusProvider>
   );
 }
 
